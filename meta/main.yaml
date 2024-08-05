@@ -1,0 +1,17 @@
+---
+
+dependencies: []
+
+galaxy_info:
+  author: ndkprd
+  role_name: fad_server_load_balance
+  description: An Ansible role to create/update Fortinet's FortiADC SLB configuration.
+  license: MIT
+  min_ansible_version: '2.12'
+  platforms:
+    - name: Fedora
+      versions:
+        - all
+  galaxy_tags:
+    - fortiadc
+    - fortinet

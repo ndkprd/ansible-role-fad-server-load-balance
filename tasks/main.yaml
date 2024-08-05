@@ -1,0 +1,47 @@
+---
+
+# Prepare variables for each roles.
+
+- name: Add content_routing_list to each virtual server
+  ansible.builtin.set_fact:
+    virtual_servers: >
+      {{ ((fad_slb_virtual_servers | map('combine',
+      [{'content_routing_list': fad_server_load_balances |
+      selectattr('virtual_server', 'equalto', virtual_server.name) |
+      map(attribute='app_name') | list}]) | list) + virtual_servers |
+      default([])) | unique(attribute='name') }}
+  loop: "{{ fad_slb_virtual_servers }}"
+  loop_control:
+    loop_var: virtual_server
+    label: "{{ virtual_server.name }}"
+  tags: [preparation]
+
+- name: Prepare vars for the roles.
+  ansible.builtin.set_fact:
+    fad_slb_real_servers: "{{ fad_slb_real_servers | default([]) + app.real_servers | unique(attribute='address') }}"
+    fad_slb_real_server_pools: "{{ fad_slb_real_server_pools | default([]) + app.server_pools | unique(attribute='name') }}"
+    fad_slb_content_routings: "{{ fad_slb_content_routings | default([]) + app.content_routings | unique(attribute='pool') }}"
+    fad_slb_virtual_servers: "{{ virtual_servers }}"
+  loop: "{{ fad_server_load_balances }}"
+  loop_control:
+    loop_var: app
+    label: "{{ app.app_name }}"
+  tags: [preparation]
+
+- name: Debug new virtual server list.
+  ansible.builtin.debug:
+    msg:
+      - "FAD SLB Real Servers: {{ fad_slb_real_servers }}"
+      - "FAD SLB Real Server Pools: {{ fad_slb_real_server_pools }}"
+      - "FAD SLB Content Routings: {{ fad_slb_content_routings }}"
+      - "FAD SLB Virtual Servers: {{ fad_slb_virtual_servers }}"
+  tags: [debug]
+
+- name: Delete FAD Server Load Balance entries.
+  tags: [delete]
+  ansible.builtin.import_tasks: delete_fad_slb_entries.yaml
+
+# Run all SLB roles.
+- name: Run the FAD Server Load Balance roles.
+  ansible.builtin.import_role:
+    name: ndkprd.fad_slb_virtual_server

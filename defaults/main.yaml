@@ -1,0 +1,15 @@
+---
+
+fad_vdom: root
+
+# load-balance real-server
+fad_slb_real_servers: []
+
+# load-balance real-server-pool
+fad_slb_real_server_pools: []
+
+# load-balance content-routing
+fad_slb_content_routings: []
+
+# load-balance virtual-server
+fad_slb_virtual_servers: []

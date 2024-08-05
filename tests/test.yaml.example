@@ -1,0 +1,175 @@
+---
+
+- name: Update/create FortiADC resources.
+  hosts: all
+  become: false
+  gather_facts: false
+  connection: local
+  vars:
+    fad_slb_virtual_servers:
+      # minimum example
+      - name: VS_ndkprd-com
+        address: 10.10.100.11
+        interface: to-dev1
+        content_routing: enable
+      # complete example
+      - name: VS_ndkprd-net
+        addr-type: 'ipv4' 
+        address: 10.10.100.12
+        address6: '::' 
+        adfs_published_service: '' 
+        alone: 'enable' 
+        auth_policy: '' 
+        av_profile: '' 
+        azure_lb_backend: '' 
+        captcha_profile: 'LB_CAPTCHA_PROFILE_DEFAULT' 
+        client_ssl_profile: '' 
+        clone_pool: '' 
+        clone_traffic_type: 'both-sides' 
+        comments: '' 
+        connection_limit: '0' 
+        connection_pool: '' 
+        connection_rate_limit: '0' 
+        content_rewriting: 'disable' 
+        content_rewriting_list: '' 
+        content_routing: 'disable'
+        domain_name: '' 
+        dos_profile: '' 
+        error_msg: 'Loadbalancer return server unavailable.' 
+        error_page: '' 
+        fortiview: 'enable' 
+        host_name: '' 
+        http2https: 'disable' 
+        http2https_port: '80 '
+        interface: port1
+        ips_profile: ''
+        l2_exception_list: '' 
+        method: 'LB_METHOD_ROUND_ROBIN' 
+        one_click_gslb_server: 'disable' 
+        packet_fwd_method: 'NAT' 
+        pagespeed: '' 
+        persistence: '' 
+        pool: '' 
+        port: [80, 443]
+        profile: 'LB_PROF_HTTP' 
+        protocol: [0]
+        public_ip: '0.0.0.0' 
+        public_ip_type: 'ipv4' 
+        public_ip6: '::' 
+        schedule_list: 'disable' 
+        schedule_pool_list: '' 
+        scripting_flag: 'disable' 
+        scripting_list: '' 
+        source_pool_list: '' 
+        ssl_mirror: 'disable' 
+        ssl_mirror_intf: '' 
+        status: 'enable' 
+        stream_scripting_flag: 'disable' 
+        stream_scripting_list: '' 
+        traffic_group: 'default' 
+        traffic_log: 'enable' 
+        trans_rate_limit: '0' 
+        type: 'l7-load-balance' 
+        use_azure_lb_backend_ip: 'disable' 
+        waf_profile: '' 
+        warmrate: '100' 
+        warmup: '0' 
+        wccp: 'disable' 
+        ztna_profile: ''
+
+    fad_server_load_balances:
+      # minimum example
+      - app_name: www.ndkprd.com
+        virtual_server: VS_NDKPRD-COM
+        content_routings:
+          - pool: www.ndkprd.com
+            conditions:
+              - content: www.ndkprd.com
+        server_pools:
+          - name: www.ndkprd.com
+            health_check_list: [LB_HLTHCK_HTTP]
+            real_server_pool_members:
+              - real_server: 10.10.10.11
+              - real_server: 10.10.10.12
+        real_servers:
+          - address: 10.10.10.11
+          - address: 10.10.10.12
+      # complete example
+      - app_name: www.ndkprd.net
+        virtual_server: VS_NDKPRD-NET
+        content_routings:
+          - name: www.ndkprd.net
+            pool: www.ndkprd.net
+            comments: ''
+            connection_pool: ''
+            connection_pool_inherit: enable
+            ip: '0.0.0.0'
+            ip6: '::'
+            method: ''
+            method_inherit: enable
+            packet_fwd_method: inherit
+            persistence: ''
+            persistence_inherit: enable
+            schedule_list: disable
+            schedule_pool_list: ''
+            source_pool_list: ''
+            type: 'l7-content-routing'
+            conditions:
+              - content: www.ndkprd.net
+                ignorecase: enable
+                object: http-host-header
+                reverse: disable
+                type: string
+        server_pools:
+          - name: www.ndkprd.net
+            direct_route_ip: 0.0.0.0
+            direct_route_ip6: "::"
+            direct_route_mode: disable
+            health_check: disable
+            health_check_list: ["LB_HLTHCK_HTTP"]
+            health_check_relationship: "AND"
+            pool_type: "ipv4"
+            rs_profile: "NONE"
+            sdn_addr_private: disable
+            type: static
+            real_server_pool_members:
+              - address: 0.0.0.0
+                address6: "::"
+                health_check_inherit: enable
+                m_health_check: disable
+                m_health_check_relationship: AND
+                port: 80
+                weight: 1
+                connlimit: 0
+                recover: 0
+                warmup: 0
+                warmrate: 100
+                connection_rate_limit: 0
+                status: enable
+                ssl: disable
+                rs_profile_inherit: enable
+                backup: disable
+                hc_status: enable
+                mysql_group_id: 0
+                mysql_read_only: disable
+                proxy_protocol: none
+                mssql_read_only: disable
+                modify_host: enable
+                host: site-02.ndkprd.com
+                m_health_check_list: []
+                cookie: ""
+                real_server: 10.10.10.11
+        real_servers:
+          - name: 10.10.10.11
+            address: 10.10.10.11
+            address6: "::"
+            instance: ""
+            sdn_address_private: disable
+            sdn_connector: disable
+            server_type: static
+            status: enable
+            type: ip
+            fqdn: ""
+
+  roles:
+    - ndkprd.fad_server_load_balance

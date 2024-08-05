@@ -1,0 +1,24 @@
+---
+
+fad_api_base_url: "https://{{ ansible_host }}/api"
+
+fad_api_endpoint:
+  slb_real_server: "{{ fad_api_base_url }}/load_balance_real_server?vdom={{ fad_vdom }}"
+  slb_real_server_pool: "{{ fad_api_base_url }}/load_balance_pool?vdom={{ fad_vdom }}"
+  slb_real_server_pool_member: "{{ fad_api_base_url }}/load_balance_pool_child_pool_member?vdom={{ fad_vdom }}"
+  slb_content_routing: "{{ fad_api_base_url }}/load_balance_content_routing?vdom={{ fad_vdom }}"
+  slb_content_routing_condition: "{{ fad_api_base_url }}/load_balance_content_routing_child_match_condition?vdom={{ fad_vdom }}"
+  slb_virtual_server: "{{ fad_api_base_url }}/load_balance_virtual_server?vdom={{ fad_vdom }}"
+
+fad_query:
+  slb_vs_cr: "slb_app_configs[?virtual_server=='%s'].app_name')"
+
+fad_api_uri_params:
+  body_format: json
+  validate_certs: false
+  return_content: true
+  status_code: 200
+
+fad_api_header:
+  'Content-Type': 'application/json'
+  'APITOKEN': '{{ fad_apitoken }}'

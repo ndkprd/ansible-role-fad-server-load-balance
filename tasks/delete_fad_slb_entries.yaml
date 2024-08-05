@@ -1,0 +1,157 @@
+---
+
+- name: Delete FAD SLB Virtual Server entries with "state = absent".
+  ansible.builtin.uri:
+    method: DELETE
+    url: "{{ fad_api_endpoint.slb_virtual_server }}&mkey={{ virtual_server.name }}"
+    body_format: "{{ fad_api_uri_params.body_format }}"
+    validate_certs: "{{ fad_api_uri_params.validate_certs }}"
+    return_content: "{{ fad_api_uri_params.return_content }}"
+    status_code: "{{ fad_api_uri_params.status_code }}"
+    headers: "{{ fad_api_header }}"
+  register: virtual_server_delete_results
+  when:
+    - virtual_server.state | default('present') == 'absent'
+  changed_when: "virtual_server_delete_results.json.payload == 0"
+  failed_when: "virtual_server_delete_results.status not in [200, 302]"
+  loop: "{{ fad_slb_virtual_servers }}"
+  loop_control:
+    loop_var: virtual_server
+    label: "{{ virtual_server.name }}"
+
+- name: Delete FAD SLB Content Routing entries with "state = absent".
+  ansible.builtin.uri:
+    method: DELETE
+    url: "{{ fad_api_endpoint.slb_content_routing }}&mkey={{ route.name | default(route.pool) }}"
+    body_format: "{{ fad_api_uri_params.body_format }}"
+    validate_certs: "{{ fad_api_uri_params.validate_certs }}"
+    return_content: "{{ fad_api_uri_params.return_content }}"
+    status_code: "{{ fad_api_uri_params.status_code }}"
+    headers: "{{ fad_api_header }}"
+  register: route_delete_results
+  when:
+    - route.state | default('present') == 'absent'
+  changed_when: "route_delete_results.json.payload == 0"
+  failed_when: "route_delete_results.status not in [200, 302]"
+  loop: "{{ fad_slb_content_routings }}"
+  loop_control:
+    loop_var: route
+    label: "{{ route.name | default(route.pool) }}"
+  tags: [delete]
+
+- name: Re-gather FAD SLB Content Routing Condition facts for update task.
+  ansible.builtin.uri:
+    method: GET
+    url: "{{ fad_api_endpoint.slb_content_routing }}"
+    body_format: "{{ fad_api_uri_params.body_format }}"
+    validate_certs: "{{ fad_api_uri_params.validate_certs }}"
+    return_content: "{{ fad_api_uri_params.return_content }}"
+    status_code: "{{ fad_api_uri_params.status_code }}"
+    headers: "{{ fad_api_header }}"
+  register: route_condition_regather_results
+  failed_when: "route_condition_regather_results.status not in [200, 302]"
+  tags: [get]
+
+- name: Delete FAD SLB Content Routing Condition entries with "state = absent".
+  vars:
+    current_route_condition_facts: "{{ route_condition_gather_results_update.json.payload }}"
+    query: "[?mkey=='%s'].match | [0] | [?content=='%s'].%s | [0]"
+  ansible.builtin.uri:
+    method: DELETE
+    url:
+      "{{ fad_api_endpoint.slb_content_routing_condition }}&pkey={{ route.0.name | default(route.0.pool) }}&mkey={{ \
+        (current_route_condition_facts | json_query(query % (route.0.name | default(route.0.pool), route.1.content, 'mkey'))) }}"
+    body_format: "{{ fad_api_uri_params.body_format }}"
+    validate_certs: "{{ fad_api_uri_params.validate_certs }}"
+    return_content: "{{ fad_api_uri_params.return_content }}"
+    status_code: "{{ fad_api_uri_params.status_code }}"
+    headers: "{{ fad_api_header }}"
+  register: route_condition_delete_results
+  loop: "{{ fad_slb_content_routings | subelements('conditions') }}"
+  loop_control:
+    loop_var: route
+    label: "{{ route.1.content }} -> {{ route.0.name | default(route.0.pool) }}"
+  changed_when: "route_condition_delete_results.json.payload == 0"
+  failed_when: "route_condition_delete_results.status not in [200, 302]"
+  when:
+    - route.0.state | default('present') == "present"
+    - route.1.state | default('present') == "absent"
+  tags: [delete]
+
+- name: Delete FAD SLB Real Server Pool entries with "state = absent".
+  ansible.builtin.uri:
+    method: DELETE
+    url: "{{ fad_api_endpoint.slb_real_server_pool }}&mkey={{ pool.name }}"
+    body_format: "{{ fad_api_uri_params.body_format }}"
+    validate_certs: "{{ fad_api_uri_params.validate_certs }}"
+    return_content: "{{ fad_api_uri_params.return_content }}"
+    status_code: "{{ fad_api_uri_params.status_code }}"
+    headers: "{{ fad_api_header }}"
+  register: pool_delete_results
+  when:
+    - pool.state | default('present') == 'absent'
+  changed_when: "pool_delete_results.json.payload == 0"
+  failed_when: "pool_delete_results.status not in [200, 302]"
+  loop: "{{ fad_slb_real_server_pools }}"
+  loop_control:
+    loop_var: pool
+    label: "{{ pool.name }}"
+  tags: [delete]
+
+- name: Re-gather FAD SLB Real Server Pool Member facts.
+  ansible.builtin.uri:
+    method: GET
+    url: "{{ fad_api_endpoint.slb_real_server_pool }}"
+    body_format: "{{ fad_api_uri_params.body_format }}"
+    validate_certs: "{{ fad_api_uri_params.validate_certs }}"
+    return_content: "{{ fad_api_uri_params.return_content }}"
+    status_code: "{{ fad_api_uri_params.status_code }}"
+    headers: "{{ fad_api_header }}"
+  register: pool_member_gather_results_update
+  failed_when: "pool_member_gather_results_update.status not in [200, 302]"
+  tags: [get]
+
+- name: Delete FAD SLB Real Server Pool Member entries with "state = absent".
+  vars:
+    current_pool_member_facts: "{{ pool_member_gather_results_update.json.payload }}"
+    query: "[?mkey=='%s'].pool_member | [0] | [?real_server_id=='%s'].%s | [0]"
+  ansible.builtin.uri:
+    method: DELETE
+    url:
+      "{{ fad_api_endpoint.slb_real_server_pool_member }}&pkey={{ pool.0.name }}&mkey={{ \
+        (current_pool_member_facts | json_query(query % (pool.0.name, pool.1.real_server, 'mkey'))) }}"
+    body_format: "{{ fad_api_uri_params.body_format }}"
+    validate_certs: "{{ fad_api_uri_params.validate_certs }}"
+    return_content: "{{ fad_api_uri_params.return_content }}"
+    status_code: "{{ fad_api_uri_params.status_code }}"
+    headers: "{{ fad_api_header }}"
+  register: pool_member_delete_results
+  loop: "{{ fad_slb_real_server_pools | subelements('real_server_pool_members') }}"
+  loop_control:
+    loop_var: pool
+    label: "{{ pool.1.real_server }} -> {{ pool.0.name }}"
+  changed_when: "pool_member_delete_results.json.payload == 0"
+  failed_when: "pool_member_delete_results.status not in [200, 302]"
+  when:
+    - pool.0.state | default('present') == "present"
+    - pool.1.state | default('present') == "absent"
+  tags: [delete]
+
+- name: Delete FAD SLB Real Server entries with "state = absent".
+  ansible.builtin.uri:
+    method: DELETE
+    url: "{{ fad_api_endpoint.slb_real_server }}&mkey={{ real_server.name | default(real_server.address) }}"
+    body_format: "{{ fad_api_uri_params.body_format }}"
+    validate_certs: "{{ fad_api_uri_params.validate_certs }}"
+    return_content: "{{ fad_api_uri_params.return_content }}"
+    status_code: "{{ fad_api_uri_params.status_code }}"
+    headers: "{{ fad_api_header }}"
+  register: real_server_delete_results
+  when:
+    - real_server.state | default('present') == 'absent'
+  failed_when: "real_server_delete_results.status not in [200, 302]"
+  loop: "{{ fad_slb_real_servers }}"
+  loop_control:
+    loop_var: real_server
+    label: "{{ real_server.name | default(real_server.address) }}"
+  tags: [delete]
